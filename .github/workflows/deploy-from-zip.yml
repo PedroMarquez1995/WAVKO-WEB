@@ -1,0 +1,43 @@
+name: Deploy WAVKO from ZIP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "WAVKO-WEB.zip"
+      - ".github/workflows/deploy-from-zip.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-website:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract WAVKO ZIP package
+        run: |
+          test -f WAVKO-WEB.zip
+          mkdir -p extracted
+          unzip -q WAVKO-WEB.zip -d extracted
+          test -f extracted/website/wrangler.jsonc
+          test -f extracted/website/src/index.js
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install website dependencies
+        working-directory: extracted/website
+        run: npm install
+
+      - name: Deploy WAVKO website to Cloudflare Workers
+        working-directory: extracted/website
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
